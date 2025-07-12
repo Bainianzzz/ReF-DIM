@@ -30,13 +30,14 @@ def lowlight(image_path):
     data_lowlight = data_lowlight.cuda().unsqueeze(0)
 
     net = ReF_DIM().cuda()
-    net.load_state_dict(torch.load('result/snapshot/model_gradnorm_100.pth'))
+    net.load_state_dict(torch.load('snapshot_final/model_gradnorm_100.pth'))
     # start = time.time()
     enhanced_image = net(data_lowlight)
 
     # end_time = (time.time() - start)
     # print(end_time)
-    image_path = image_path.replace('for_val', 'DIM')
+    image_path = image_path.replace('val', 'DIM_final_100')
+    # image_path = image_path.replace('input', 'output')
     if not os.path.exists(os.path.dirname(image_path)):
         os.makedirs(os.path.dirname(image_path))
     result_path = image_path
@@ -49,7 +50,7 @@ def lowlight(image_path):
 if __name__ == '__main__':
     # test_images
     with torch.no_grad():
-        filePath = r'D:\datasets\Exdark\images\for_val'
+        filePath = r'D:\datasets\LOD\images\val'
         # filePath = r'test_data/input'
 
         file_list = os.listdir(filePath)

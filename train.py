@@ -171,63 +171,17 @@ def train_toy_example(args):
             weights.append(model.weights.data.numpy())
             grad_norm_losses.append(grad_norm_loss.data.numpy())
 
+        if torch.cuda.is_available():
+            print('{}/{}: loss_ratio={}, weights={}, grad_norm_loss={}'.format(
+                t + 1, args.n_iter, loss_ratios[-1], model.weights.data.cpu().numpy(),
+                grad_norm_loss.data.cpu().numpy()))
+
         if (t + 1) % 5 == 0:
-            if torch.cuda.is_available():
-                print('{}/{}: loss_ratio={}, weights={}, grad_norm_loss={}'.format(
-                    t+1, args.n_iter, loss_ratios[-1], model.weights.data.cpu().numpy(),
-                    grad_norm_loss.data.cpu().numpy()))
             # 保存模型参数
             if args.save_mode:
                 if not os.path.exists(args.result_path):
                     os.mkdir(args.result_path)
-                torch.save(net.state_dict(), f'{args.result_path}/model_gradnorm_{t}.pth')
-
-            # else:
-            #     print('{}/{}: loss_ratio={}, weights={}, task_loss={}, grad_norm_loss={}'.format(
-            #         t, args.n_iter, loss_ratios[-1], model.weights.data.numpy(), task_loss.data.numpy(),
-            #         grad_norm_loss.data.numpy()))
-
-        torch.cuda.empty_cache()
-
-    # task_losses = np.array(task_losses)
-    # weights = np.array(weights)
-
-    # plt.rc('text', usetex=True)
-    # plt.rc('font', family='serif', size='smaller')
-    # fig = plt.figure()
-    # ax1 = fig.add_subplot(2, 3, 1)
-    # ax1.set_title(r'Loss (scale $\sigma_0=1.0$)')
-    # ax2 = fig.add_subplot(2, 3, 2)
-    # ax2.set_title(r'Loss (scale $\sigma_1={})$'.format(sigmas[1]))
-    # ax3 = fig.add_subplot(2, 3, 3)
-    # ax3.set_title(r"$\sum_i L_i(t) / L_i(0)$")
-    # ax4 = fig.add_subplot(2, 3, 4)
-    # ax4.set_title(r'$L_{\text{grad}}$')
-    #
-    # ax5 = fig.add_subplot(2, 3, 5)
-    # ax5.set_title(r'Change of weights $w_i$ over time')
-    #
-    # ax1.plot(task_losses[:, 0])
-    # ax2.plot(task_losses[:, 1])
-    # ax3.plot(loss_ratios)
-    # ax4.plot(grad_norm_losses)
-    # ax5.plot(weights[:, 0])
-    # ax5.plot(weights[:, 1])
-    # plt.show()
-
-    # 绘制总损失 (total loss) 的折线图
-    # plt.figure()
-    # ax = plt.subplot(1, 1, 1)
-    # ax.set_title('Total Loss over Training')
-    #
-    # # 假设 total_loss 是包含每个迭代步的总损失值的列表
-    # # 这里使用 task_losses[:, 0] + task_losses[:, 1] 来计算每个迭代步的总损失
-    # total_loss = np.sum(grad_norm_loss.detach().cpu().numpy(), axis=1)
-    # ax.plot(total_loss)
-    #
-    # plt.xlabel('Iteration')
-    # plt.ylabel('Total Loss')
-    # plt.show()
+                torch.save(net.state_dict(), f'{args.result_path}/model_gradnorm_{t+1}.pth')
 
 
 if __name__ == '__main__':
@@ -235,9 +189,9 @@ if __name__ == '__main__':
     parser.add_argument('--n-iter', '-it', type=int, default=100)
     parser.add_argument('--mode', '-m', choices=('grad_norm', 'equal_weight'), default='grad_norm')
     parser.add_argument('--alpha', '-a', type=float, default=0.12)
-    parser.add_argument('--n_tasks', '-n', type=int, default=1)
+    parser.add_argument('--n_tasks', '-n', type=int, default=2)
     parser.add_argument('--data_path', '-d', type=str, default=r'D:\datasets\ReF_DIM')
-    parser.add_argument('--result_path', '-r', type=str, default=r'result/snapshot')
+    parser.add_argument('--result_path', '-r', type=str, default=r'snapshot_final')
     parser.add_argument('--save_mode', '-save', type=bool, default=True)
     args = parser.parse_args()
 

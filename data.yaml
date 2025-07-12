@@ -9,9 +9,9 @@
 #     └── coco  ← downloads here (20.1 GB)
 
 # Train/val/test sets as 1) dir: path/to/imgs, 2) file: path/to/imgs.txt, or 3) list: [path/to/imgs1, path/to/imgs2, ..]
-path: G:\LOD_YOLO # dataset root dir
+path: D:\datasets\LOD # dataset root dir
 train: images/train2017 # train images (relative to 'path') 118287 images
-val: images/DIM_f100  # val images (relative to 'path') 5000 images
+val: images/DIM_final_100  # val images (relative to 'path') 5000 images
 test: images/test2017 # 20288 of 40670 images, submit to https://competitions.codalab.org/competitions/20794
 
 # Classes

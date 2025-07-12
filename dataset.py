@@ -10,7 +10,7 @@ import torchvision.transforms as transforms
 
 transform = transforms.Compose([
     transforms.ToTensor(),
-    transforms.Resize((512, 512)),
+    transforms.Resize((256, 256)),
 ])
 
 
@@ -19,7 +19,7 @@ def is_image_file(filename: str):
 
 
 def load_img(filepath):
-    img = Image.open(filepath)
+    img = Image.open(filepath).convert('RGB')
     img = transform(img)
     return img
 
@@ -53,5 +53,5 @@ class DIMDataset(data.Dataset):
 
 
 if __name__ == '__main__':
-    data = DIMDataset(r'G:\ReF_DIM')
-    print(data)
+    data = DIMDataset(r'D:\datasets\ReF_DIM')
+    print(data.__len__())
