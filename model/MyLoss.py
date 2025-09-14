@@ -2,6 +2,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
+device=torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
 # 曝光控制误差
 # 不让某些地方过暗，某些地方过亮
@@ -17,7 +18,7 @@ class L_exp(nn.Module):
         x = torch.mean(x, 1, keepdim=True)
         mean = self.pool(x)
 
-        d = torch.mean(torch.pow(mean - torch.FloatTensor([self.mean_val]).cuda(), 2))
+        d = torch.mean(torch.pow(mean - torch.FloatTensor([self.mean_val]).to(device), 2))
         return d
 
 
@@ -29,10 +30,10 @@ class L_spa(nn.Module):
     def __init__(self):
         super(L_spa, self).__init__()
 
-        kernel_left = torch.FloatTensor([[[0, 0, 0], [-1, 1, 0], [0, 0, 0]]]).cuda().unsqueeze(0)
-        kernel_right = torch.FloatTensor([[[0, 0, 0], [0, 1, -1], [0, 0, 0]]]).cuda().unsqueeze(0)
-        kernel_up = torch.FloatTensor([[[0, -1, 0], [0, 1, 0], [0, 0, 0]]]).cuda().unsqueeze(0)
-        kernel_down = torch.FloatTensor([[[0, 0, 0], [0, 1, 0], [0, -1, 0]]]).cuda().unsqueeze(0)
+        kernel_left = torch.FloatTensor([[[0, 0, 0], [-1, 1, 0], [0, 0, 0]]]).to(device).unsqueeze(0)
+        kernel_right = torch.FloatTensor([[[0, 0, 0], [0, 1, -1], [0, 0, 0]]]).to(device).unsqueeze(0)
+        kernel_up = torch.FloatTensor([[[0, -1, 0], [0, 1, 0], [0, 0, 0]]]).to(device).unsqueeze(0)
+        kernel_down = torch.FloatTensor([[[0, 0, 0], [0, 1, 0], [0, -1, 0]]]).to(device).unsqueeze(0)
 
         self.weight_left = nn.Parameter(data=kernel_left, requires_grad=False)
         self.weight_right = nn.Parameter(data=kernel_right, requires_grad=False)
@@ -107,7 +108,7 @@ class L_exp(nn.Module):
         x = torch.mean(x, 1, keepdim=True)
         mean = self.pool(x)
 
-        d = torch.mean(torch.pow(mean - torch.FloatTensor([self.mean_val]).cuda(), 2))
+        d = torch.mean(torch.pow(mean - torch.FloatTensor([self.mean_val]).to(device), 2))
         return d
 
 class L_color(nn.Module):

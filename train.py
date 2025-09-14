@@ -4,17 +4,13 @@ import os
 import torch
 
 import numpy as np
-# from imageio.v2 import sizes
 from torch.utils.data import DataLoader
 from tqdm import tqdm
 
-# from dataset import RegressionDataset
-# from model import RegressionModel, RegressionTrain
 from dataset import DIMDataset
+from model.MyLoss import device
 from model.gradnorm import GradNorm
 from model.ReF_DIM_C2f import ReF_DIM
-
-import matplotlib.pyplot as plt
 
 
 def train_toy_example(args):
@@ -23,22 +19,15 @@ def train_toy_example(args):
     torch.cuda.manual_seed_all(123)
     torch.manual_seed(123)
 
-    # define the sigmas, the number of tasks and the epsilons
-    # for the toy example
-    # sigmas = [1.0, float(args.sigma)]
-    # print('Training toy example with sigmas={}'.format(sigmas))
-    n_tasks = args.n_tasks
-    # epsilons = np.random.normal(scale=3.5, size=(n_tasks, 100, 250)).astype(np.float32)
-
     # initialize the data loader
     data = DIMDataset(args.data_path)
     data_loader = DataLoader(data, batch_size=8, shuffle=True, pin_memory=True)
 
     # initialize the model and use CUDA if available
-    net = ReF_DIM(6)
-    model = GradNorm(net)
-    if torch.cuda.is_available():
-        model.cuda()
+    n_tasks = args.n_tasks
+    device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+    net = ReF_DIM(n_tasks)
+    model = GradNorm(net).to(device)
 
     # initialize the optimizer
     optimizer = torch.optim.Adam(model.parameters(), lr=1e-4)
@@ -48,18 +37,22 @@ def train_toy_example(args):
     task_losses = []
     loss_ratios = []
     grad_norm_losses = []
+    
+    # initialize best model tracking variables
+    best_avg_weighted_loss = float('inf')
+    best_model_path = None
 
     # run n_iter iterations of training
     for t in range(n_iterations):
-
+        print(f'######################  epoch-{t+1}  ######################')
         # get a single batch
-        for (it, batch) in enumerate(tqdm(data_loader, desc=f'epoch-{t + 1}: ')):
-            #  get the X and the targets values
+        for (it, batch) in enumerate(data_loader):
+            # get the X and the targets values
             X = batch[0]
             ts = batch[1]
             if torch.cuda.is_available():
-                X = X.cuda()
-                ts = ts.cuda()
+                X = X.to(device)
+                ts = ts.to(device)
 
             # evaluate each task loss L_i(t)
             task_loss = model(X, ts)  # this will do a forward pass in the model and will also evaluate the loss
@@ -88,7 +81,7 @@ def train_toy_example(args):
             loss.backward(retain_graph=True)
 
             # set the gradients of w_i(t) to zero because these gradients have to be updated using the GradNorm loss
-            # print('Before turning to 0: {}'.format(model.weights.grad))
+            print('Before turning to 0: {}'.format(model.weights.grad))
             model.weights.grad.data = model.weights.grad.data * 0.0
             # print('Turning to 0: {}'.format(model.weights.grad))
 
@@ -111,7 +104,7 @@ def train_toy_example(args):
                     except IndexError:
                         pass
                 norms = torch.stack(norms)
-                # print('G_w(t): {}'.format(norms))
+                print('G_w(t): {}'.format(norms))
 
                 # compute the inverse training rate r_i(t)
                 # \curl{L}_i 
@@ -121,39 +114,34 @@ def train_toy_example(args):
                     loss_ratio = weighted_task_loss.data.numpy() / initial_weighted_task_loss
                 # r_i(t)
                 inverse_train_rate = loss_ratio / np.mean(loss_ratio)
-                # print('r_i(t): {}'.format(inverse_train_rate))
+                print('r_i(t): {}'.format(inverse_train_rate))
 
                 # compute the mean norm \tilde{G}_w(t)
                 if torch.cuda.is_available():
                     mean_norm = np.mean(norms.data.cpu().numpy())
                 else:
                     mean_norm = np.mean(norms.data.numpy())
-                # print('tilde G_w(t): {}'.format(mean_norm))
+                print('tilde G_w(t): {}'.format(mean_norm))
 
                 # compute the GradNorm loss
                 # this term has to remain constant
                 constant_term = torch.tensor(mean_norm * (inverse_train_rate ** args.alpha), requires_grad=False)
                 if torch.cuda.is_available():
-                    constant_term = constant_term.cuda()
-                # print('Constant term: {}'.format(constant_term))
+                    constant_term = constant_term.to(device)
+                print('Constant term: {}'.format(constant_term))
                 # this is the GradNorm loss itself
                 try:
                     grad_norm_loss = torch.sum(torch.abs(norms - constant_term))
                 except RuntimeError:
                     constant_term = constant_term[:, :len(norms)]
                     grad_norm_loss = torch.sum(torch.abs(norms - constant_term))
-                # print('GradNorm loss {}'.format(grad_norm_loss))
+                print('GradNorm loss {}'.format(grad_norm_loss))
 
                 # compute the gradient for the weights
                 model.weights.grad = torch.autograd.grad(grad_norm_loss, model.weights)[0]
 
             # do a step with the optimizer
             optimizer.step()
-            '''
-            print('')
-            wait = input("PRESS ENTER TO CONTINUE.")
-            print('')
-            '''
 
         # renormalize
         normalize_coeff = n_tasks / torch.sum(model.weights.data, dim=0)
@@ -171,27 +159,44 @@ def train_toy_example(args):
             weights.append(model.weights.data.numpy())
             grad_norm_losses.append(grad_norm_loss.data.numpy())
 
+        # calculate average weighted task loss
+        if torch.cuda.is_available():
+            avg_weighted_loss = torch.mean(weighted_task_loss).data.cpu().numpy()
+        else:
+            avg_weighted_loss = torch.mean(weighted_task_loss).data.numpy()
+        
+        # check and save best model
+        if avg_weighted_loss < best_avg_weighted_loss:
+            best_avg_weighted_loss = avg_weighted_loss
+            if args.save_mode:
+                best_model_path = os.path.join(args.result_path, 'best_model.pth')
+                os.makedirs(args.result_path, exist_ok=True)
+                torch.save({
+                    'model_state_dict': model.state_dict(),
+                    'weights': model.weights.data,
+                    'avg_weighted_loss': best_avg_weighted_loss,
+                    'epoch': t + 1
+                }, best_model_path)
+                print(f'Best model saved at epoch {t+1} with avg weighted loss: {best_avg_weighted_loss}')
+
         if torch.cuda.is_available():
             print('{}/{}: loss_ratio={}, weights={}, grad_norm_loss={}'.format(
                 t + 1, args.n_iter, loss_ratios[-1], model.weights.data.cpu().numpy(),
                 grad_norm_loss.data.cpu().numpy()))
 
-        if (t + 1) % 5 == 0:
-            # 保存模型参数
-            if args.save_mode:
-                if not os.path.exists(args.result_path):
-                    os.mkdir(args.result_path)
-                torch.save(net.state_dict(), f'{args.result_path}/model_gradnorm_{t+1}.pth')
+    # print final best model info
+    if best_model_path:
+        print(f'Best model saved at {best_model_path} with avg weighted loss: {best_avg_weighted_loss}')
 
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='GradNorm')
     parser.add_argument('--n-iter', '-it', type=int, default=100)
     parser.add_argument('--mode', '-m', choices=('grad_norm', 'equal_weight'), default='grad_norm')
-    parser.add_argument('--alpha', '-a', type=float, default=0.12)
+    parser.add_argument('--alpha', '-a', type=float, default=0.16)
     parser.add_argument('--n_tasks', '-n', type=int, default=2)
     parser.add_argument('--data_path', '-d', type=str, default=r'D:\datasets\ReF_DIM')
-    parser.add_argument('--result_path', '-r', type=str, default=r'snapshot_final')
+    parser.add_argument('--result_path', '-r', type=str, default=r'snapshot')
     parser.add_argument('--save_mode', '-save', type=bool, default=True)
     args = parser.parse_args()
 

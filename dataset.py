@@ -39,12 +39,6 @@ class DIMDataset(data.Dataset):
         im1 = load_img(self.input_filenames[index])
         target_index = self.target_filenames.index(self.input_filenames[index].replace('input', 'target'))
         im2 = load_img(self.target_filenames[target_index])
-        # try:
-        #     target_index = self.target_filenames.index(self.input_filenames[index].replace('input', 'target'))
-        #     im2 = load_img(self.target_filenames[target_index])
-        # except ValueError:
-        #     # 无匹配，则是无监督训练，生成相同大小的0张量
-        #     im2 = torch.zeros(im1.shape)
 
         return im1, im2
 

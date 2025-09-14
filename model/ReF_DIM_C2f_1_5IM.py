@@ -5,7 +5,7 @@ import torch.nn.functional as F
 from model.conv import CSDN_Tem, C2f, Conv
 
 
-class enconder_C2f(nn.Module):
+class enconder_DIM(nn.Module):
     def __init__(self, c1=3, c_hidden=18):
         super().__init__()
 
@@ -20,9 +20,9 @@ class enconder_C2f(nn.Module):
 
 
 class ReF_DIM(nn.Module):
-    def __init__(self, n_task=5, c1=3, c_hidden=18, back_bone=enconder_C2f):
+    def __init__(self, n_task=5, c1=3, c_hidden=18):
         super().__init__()
-        self.enconder = back_bone(c1=c1, c_hidden=c_hidden)
+        self.enconder = enconder_DIM(c1=c1, c_hidden=c_hidden)
 
         self.pointConv1 = Conv(c1=36, c2=c_hidden)
         self.pointConv2 = Conv(c1=6, c2=3)
@@ -37,7 +37,7 @@ class ReF_DIM(nn.Module):
         IM = self.Intensity_mapping(fusion)
 
         fusion = self.pointConv1(torch.cat([enconder_1, fusion], 1))
-        IM = self.Intensity_mapping(fusion + IM)
+        IM = self.Intensity_mapping(fusion + IM * 0.5)
 
         IM = self.decoder(IM)
 
