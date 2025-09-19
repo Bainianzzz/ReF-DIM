@@ -2,7 +2,7 @@ import torch
 import torchvision
 import torch.optim
 import os
-from model.ReF_DIM_C2f import ReF_DIM
+from model.DIM import ReF_DIM
 import numpy as np
 from PIL import Image
 
