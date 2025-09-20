@@ -12,7 +12,7 @@ class Encoder(nn.Module):
         self.stage2 = C3k2(c1=c_hidden * 2, c2=c_hidden * 2, c3k=False, e=0.25)
 
         self.attn1 = A2C2f(c1=c_hidden * 2, c2=c_hidden * 2, area=4, residual=True, e=0.5)
-        self.attn2 = A2C2f(c1=c_hidden * 2, c2=c_hidden * 2, area=4, residual=True, e=0.5)
+        self.attn2 = A2C2f(c1=c_hidden * 2, c2=c_hidden * 2, area=1, residual=True, e=0.5)
 
     def forward(self, x):
         encoder_1 = self.stage1(self.conv1(x))
@@ -28,7 +28,7 @@ class DIM(nn.Module):
         super().__init__()
         self.encoder = Encoder(c1=c1, c_hidden=c_hidden)
 
-        self.upsample = nn.Upsample(scale_factor=2)
+        self.upsample = nn.Upsample(scale_factor=2, mode='bilinear', align_corners=True)
 
         self.conv1 = Conv(c1=c_hidden * 4, c2=c_hidden)
         self.conv2 = Conv(c1=c_hidden * 2, c2=c_hidden)

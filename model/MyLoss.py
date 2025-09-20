@@ -4,24 +4,6 @@ import torch.nn.functional as F
 
 device=torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
-# 曝光控制误差
-# 不让某些地方过暗，某些地方过亮
-# 让每个像素的亮度更靠近某个中间值
-class L_exp(nn.Module):
-
-    def __init__(self, patch_size, mean_val):
-        super(L_exp, self).__init__()
-        self.pool = nn.AvgPool2d(patch_size)
-        self.mean_val = mean_val
-
-    def forward(self, x):
-        x = torch.mean(x, 1, keepdim=True)
-        mean = self.pool(x)
-
-        d = torch.mean(torch.pow(mean - torch.FloatTensor([self.mean_val]).to(device), 2))
-        return d
-
-
 # 空间一致误差
 # 不希望推理后的图像与原来相比，
 # 某像素的值和其相邻像素的值的差发生过大的改变
@@ -97,9 +79,8 @@ class L_TV(nn.Module):
 
 class L_exp(nn.Module):
 
-    def __init__(self, patch_size, mean_val):
+    def __init__(self, patch_size=16, mean_val=0.6):
         super(L_exp, self).__init__()
-        # print(1)
         self.pool = nn.AvgPool2d(patch_size)
         self.mean_val = mean_val
 

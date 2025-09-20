@@ -11,7 +11,7 @@ from tqdm import tqdm
 
 from dataset import DIMDataset
 from model.DIM import DIM
-from model.MyLoss import L_TV
+from model.MyLoss import L_exp
 
 
 def train(args):
@@ -35,11 +35,12 @@ def train(args):
         config={
             "learning_rate": 1e-4,
             "epochs": args.n_iter,
-            "loss_weight": {"L1": 1, "TV": 0.2},
+            "loss_weight": {"L1": 1, "EXP": 0.2},
             "GPU": torch.cuda.current_device() if torch.cuda.is_available() else "cpu",
             "batch_size": 8,
             "dataset": "LOL-blur-selected",
             "seed": 123,
+            "parameters": sum(p.numel() for p in net.parameters()),
             "archi": net,
         },
     )
@@ -52,7 +53,7 @@ def train(args):
     best_model_path = None
 
     l1_loss = nn.L1Loss()
-    tv_loss = L_TV()
+    exp_loss = L_exp()
 
     # run n_iter iterations of training
     for t in range(args.n_iter):
@@ -68,10 +69,10 @@ def train(args):
             # calculate loss = L1_loss + 0.2*TV_loss
             y = net(x)
             L1_loss = l1_loss(y, gt)
-            TV_loss = tv_loss(y)
-            loss = L1_loss + 0.2 * TV_loss
+            Exp_loss = exp_loss(y)
+            loss = L1_loss + 0.2 * Exp_loss
             if it % 8 == 0:
-                run.log({"L1 Loss": L1_loss.item(), "TV Loss": TV_loss.item(), "Total Loss": loss.item()})
+                run.log({"L1 Loss": L1_loss.item(), "Exp Loss": Exp_loss.item(), "Total Loss": loss.item()})
 
             optimizer.zero_grad()
             loss.backward()
@@ -94,7 +95,7 @@ def train(args):
 
         # Save every 10 epochs
         if t % 10 == 0 and t != 0:
-            model_path = os.path.join(args.result_path, f'epoch-{1+t}.pth')
+            model_path = os.path.join(args.result_path, f'epoch-{1 + t}.pth')
             torch.save(net.state_dict(), model_path)
             print(f'Model saved at epoch {t + 1} with avg loss: {best_avg_loss}')
 
