@@ -92,6 +92,12 @@ def train(args):
             torch.save(net.state_dict(), best_model_path)
             print(f'Best model saved at epoch {t + 1} with avg loss: {best_avg_loss}')
 
+        # Save every 10 epochs
+        if t % 10 == 0 and t != 0:
+            model_path = os.path.join(args.result_path, f'epoch-{1+t}.pth')
+            torch.save(net.state_dict(), model_path)
+            print(f'Model saved at epoch {t + 1} with avg loss: {best_avg_loss}')
+
     # print final best model info
     if best_model_path:
         print(f'Best model saved at {best_model_path} with avg loss: {best_avg_loss}')
