@@ -38,7 +38,7 @@ class DIM(nn.Module):
     def forward(self, x):
         encoder_1, encoder_2, attn = self.encoder(x)
 
-        attn = self.conv0(self.upsample(attn))
+        attn = self.upsample(self.conv0(attn))
         fusion_1 = torch.cat([attn, encoder_2], 1)
         IM_1 = self.intensity_mapping(fusion_1)
         IM_1 = self.conv1(IM_1)
