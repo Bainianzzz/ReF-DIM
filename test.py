@@ -35,15 +35,9 @@ def lowlight(image_paths, net, result_paths, device):
     # Stack images into a batch
     batch_images = torch.stack(batch_images).to(device)
 
-    # Print memory usage before inference
-    print(f"Before inference: {torch.cuda.memory_allocated() / 1024 ** 3:.2f} GB")
-
     # Perform inference with mixed precision
     with torch.no_grad():
         enhanced_images = net(batch_images)
-
-    # Print memory usage after inference
-    print(f"After inference: {torch.cuda.memory_allocated() / 1024 ** 3:.2f} GB")
 
     # Save enhanced images
     for img, result_path in zip(enhanced_images, result_paths):
@@ -54,9 +48,6 @@ def lowlight(image_paths, net, result_paths, device):
     # Clean up
     del batch_images, enhanced_images
     torch.cuda.empty_cache()
-
-    # Print memory usage after cleanup
-    print(f"After cleanup: {torch.cuda.memory_allocated() / 1024 ** 3:.2f} GB")
 
 
 if __name__ == '__main__':
@@ -96,3 +87,19 @@ if __name__ == '__main__':
 
         for path in batch_result_paths:
             print(f"Saved enhanced image to {path}")
+
+# kangaroo-17
+# LOD
+# Box(P          R      mAP50  mAP50-95)
+# 0.786      0.586      0.688      0.496
+# LIS
+# Box(P          R      mAP50  mAP50-95)       SEG(P          R      mAP50  mAP50-95)
+# 0.766      0.547      0.646      0.469       0.76      0.511      0.605      0.374
+
+# monkey-18
+# LOD
+# Box(P          R      mAP50  mAP50-95)
+# 0.777      0.597      0.699      0.504
+# LIS
+# Box(P          R      mAP50  mAP50-95)      SEG(P          R      mAP50  mAP50-95)
+# 0.768      0.557      0.656      0.478      0.755       0.52      0.614      0.382

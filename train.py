@@ -36,7 +36,7 @@ def train(args):
             "learning_rate": 1e-4,
             "epochs": args.n_iter,
             "loss_weight": {"L1": 1, "EXP": 0.2},
-            "GPU": torch.cuda.current_device() if torch.cuda.is_available() else "cpu",
+            "GPU": "A4000",
             "batch_size": 8,
             "dataset": "LOL-blur-selected",
             "seed": 123,
@@ -92,12 +92,6 @@ def train(args):
             os.makedirs(args.result_path, exist_ok=True)
             torch.save(net.state_dict(), best_model_path)
             print(f'Best model saved at epoch {t + 1} with avg loss: {best_avg_loss}')
-
-        # Save every 10 epochs
-        if (t + 1) % 10 == 0 and t != 0:
-            model_path = os.path.join(args.result_path, f'epoch-{1 + t}.pth')
-            torch.save(net.state_dict(), model_path)
-            print(f'Model saved at epoch {t + 1} with avg loss: {best_avg_loss}')
 
     # print final best model info
     if best_model_path:

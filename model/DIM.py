@@ -8,17 +8,20 @@ class Encoder(nn.Module):
         self.conv1 = Conv(c1=c1, c2=c_hidden, k=3, s=2)
         self.conv2 = Conv(c1=c_hidden, c2=c_hidden * 2, k=3, s=2)
         self.conv3 = Conv(c1=c_hidden * 2, c2=c_hidden * 4, k=3, s=2)
+        self.conv4 = Conv(c1=c_hidden * 4, c2=c_hidden * 4, k=3, s=2)
 
         self.stage1 = C3k2(c1=c_hidden, c2=c_hidden, c3k=False, e=0.25)
         self.stage2 = C3k2(c1=c_hidden * 2, c2=c_hidden * 2, c3k=False, e=0.25)
 
-        self.attn1 = A2C2f(c1=c_hidden * 4, c2=c_hidden * 4, area=1, residual=True, e=0.25)
+        self.attn1 = A2C2f(c1=c_hidden * 4, c2=c_hidden * 4, area=4, residual=True, e=0.25)
+        self.attn2 = A2C2f(c1=c_hidden * 4, c2=c_hidden * 4, area=1, residual=True, e=0.25)
 
     def forward(self, x):
         encoder_1 = self.stage1(self.conv1(x))
         encoder_2 = self.stage2(self.conv2(encoder_1))
 
         attn = self.attn1(self.conv3(encoder_2))
+        attn = self.attn2(self.conv4(attn))
 
         return encoder_1, encoder_2, attn
 
@@ -28,6 +31,7 @@ class DIM(nn.Module):
         super().__init__()
         self.encoder = Encoder(c1=c1, c_hidden=c_hidden)
 
+        self.upsample_0 = nn.Upsample(scale_factor=4)
         self.upsample = nn.Upsample(scale_factor=2, mode='bilinear', align_corners=True)
 
         self.conv0 = Conv(c1=c_hidden * 4, c2=c_hidden * 2)
@@ -38,7 +42,7 @@ class DIM(nn.Module):
     def forward(self, x):
         encoder_1, encoder_2, attn = self.encoder(x)
 
-        attn = self.upsample(self.conv0(attn))
+        attn = self.upsample_0(self.conv0(attn))
         fusion_1 = torch.cat([attn, encoder_2], 1)
         IM_1 = self.intensity_mapping(fusion_1)
         IM_1 = self.conv1(IM_1)
