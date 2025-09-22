@@ -169,3 +169,37 @@ cython_debug/
 
 # PyPI configuration file
 .pypirc
+
+# ReF-DIM Project specific ignores
+# Model snapshots and checkpoints
+snapshot/
+snapshots/
+*.pth
+*.ckpt
+*.pt
+
+# Dataset directories
+dataset/
+datasets/
+data/
+
+# Log files
+*.log
+
+# Temporary files
+*.tmp
+*.temp
+
+# System files
+.DS_Store
+Thumbs.db
+
+# VS Code
+.vscode/
+
+# Swanspace logs
+swanlog/
+
+# Numpy files
+*.npy
+*.npz
