@@ -6,7 +6,7 @@ from model.DIM import DIM
 from PIL import Image
 import argparse
 import glob
-from torchvision.transforms import Compose, ToTensor
+from torchvision.transforms import Compose, ToTensor, Resize
 from torch.cuda.amp import autocast
 
 
@@ -22,6 +22,7 @@ def lowlight(image_paths, net, result_paths, device):
     """
     # Define image preprocessing pipeline
     transform = Compose([
+        Resize((800, 1200)),
         ToTensor()  # Convert PIL image to C×H×W Tensor and normalize to [0, 1]
     ])
 
