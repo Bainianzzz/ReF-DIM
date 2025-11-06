@@ -26,26 +26,22 @@ class L_edge(nn.Module):
 class L_percep(nn.Module):
     def __init__(self):
         super(L_percep, self).__init__()
-        # Use the latest PyTorch VGG19 model and weights
-        from torchvision.models import vgg19, VGG19_Weights
-        weights = VGG19_Weights.DEFAULT
-        vgg = vgg19(weights=weights).features
-        # Take layers up to 16 (exclusive), resulting in feature maps of shape (256, H/8, W/8)
-        self.vgg_layers = nn.Sequential(*list(vgg.children())[:17]).to(device)
-        for param in self.vgg_layers.parameters():
-            param.requires_grad = False
-        # Load LPIPS loss, based on VGG, without normalizing the input
         self.lpips_loss = lpips.LPIPS(net='vgg').to(device)
         for param in self.lpips_loss.parameters():
             param.requires_grad = False
 
-    def forward(self, input_feature, target_image):
+    def forward(self, enhanced_image, target_image):
         """
-        input_feature: shape (B, 256, H/8, W/8)
+        enhanced_image: shape (B, 3, H, W)
         target_image: shape (B, 3, H, W)
         """
-        with torch.no_grad():
-            features = self.vgg_layers(target_image)
         # lpips expects input to be in [-1, 1] and outputs (B, 1, 1, 1) -> squeeze to (B,)
-        loss = self.lpips_loss(input_feature, features)
+        loss = self.lpips_loss(enhanced_image, target_image)
         return loss.mean()
+
+if __name__ == '__main__':
+    model = L_percep().cuda()
+    x = torch.randn(1, 3, 224, 224).cuda()
+    y = torch.randn(1, 3, 224, 224).cuda()
+    z = model(x, y)
+    print(z)

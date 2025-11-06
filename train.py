@@ -44,7 +44,7 @@ def train(args):
         config={
             "learning_rate": 2e-5,
             "epochs": args.n_iter,
-            "loss_weight": {"L1_output": 1, "L1_low": 1, "EXP": 0.2, "Edge": 0.1},
+            "loss_weight": {"L1_output": 1, "L1_low": 1, "EXP": 1e-2, "Edge": 50},
             "GPU": torch.cuda.current_device() if torch.cuda.is_available() else "cpu",
             "batch_size": 8,
             "dataset": "LOL-blur-selected",
@@ -63,8 +63,9 @@ def train(args):
 
     # initialize loss functions
     l1_loss = nn.L1Loss()
-    exp_loss = L_percep().to(device)
+    p_loss = L_percep().to(device)
     edge_loss = L_edge().to(device)
+    downSample = nn.AvgPool2d(8)
 
     # run n_iter iterations of training
     for t in range(args.n_iter):
@@ -82,12 +83,11 @@ def train(args):
             
             # L1 loss for both output and output_low
             L1_loss_output = l1_loss(output, gt)
-            L1_loss_low = l1_loss(output_low, gt)
+            L1_loss_low = l1_loss(output_low, downSample(gt))
             
             # Extract VGG features for L_exp loss
             # L_exp expects (input_feature, target_image) where input_feature is VGG feature
-            output_features = exp_loss.vgg_layers(output)
-            P_loss = exp_loss(output_features, gt)
+            P_loss = p_loss(output, gt)
             
             # Edge/TV loss for smoothness (applied to output)
             Edge_loss = edge_loss(output)
