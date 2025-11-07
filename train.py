@@ -44,7 +44,7 @@ def train(args):
         config={
             "learning_rate": 2e-5,
             "epochs": args.n_iter,
-            "loss_weight": {"L1_output": 1, "L1_low": 1, "EXP": 1e-2, "Edge": 50},
+            "loss_weight": {"L1_output": 1, "L1_low": 1, "P": 1e-2, "Edge": 5},
             "GPU": torch.cuda.current_device() if torch.cuda.is_available() else "cpu",
             "batch_size": 8,
             "dataset": "LOL-blur-selected",

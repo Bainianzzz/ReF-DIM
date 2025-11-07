@@ -40,7 +40,7 @@ def lowlight(image_paths, net, result_paths, device):
 
     # Perform inference with mixed precision
     with torch.no_grad():
-        enhanced_images = net(batch_images)
+        enhanced_images, _ = net(batch_images)
 
     # Print memory usage after inference
     print(f"After inference: {torch.cuda.memory_allocated() / 1024 ** 3:.2f} GB")
@@ -61,9 +61,9 @@ def lowlight(image_paths, net, result_paths, device):
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Test ReF-DIM model on a folder of images')
-    parser.add_argument('--input_folder', '-i', type=str, required=True, help='Path to input images folder')
-    parser.add_argument('--model_path', '-m', type=str, required=True, help='Path to trained model')
-    parser.add_argument('--output_folder', '-o', type=str, required=True, help='Path to output folder')
+    parser.add_argument('--input_folder', '-i', type=str, default=r'D:\Dataset\LOD\images\val', help='Path to input images folder')
+    parser.add_argument('--model_path', '-m', type=str, default='snapshot/best.pth', help='Path to trained model')
+    parser.add_argument('--output_folder', '-o', type=str, default=r'D:\Dataset\LOD\images\temp', help='Path to output folder')
 
     args = parser.parse_args()
 
@@ -74,8 +74,15 @@ if __name__ == '__main__':
     # Initialize device and model
     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
     net = DIM().to(device)
+
     if torch.cuda.is_available():
-        net.load_state_dict(torch.load(args.model_path))
+        state_dict = torch.load(args.model_path)
+
+        filtered_state_dict = {}
+        for k, v in state_dict.items():
+            if 'total_ops' not in k and 'total_params' not in k:
+                filtered_state_dict[k] = v
+        net.load_state_dict(filtered_state_dict, strict=False)
     else:
         net.load_state_dict(torch.load(args.model_path, map_location='cpu'))
 
