@@ -63,7 +63,7 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Test ReF-DIM model on a folder of images')
     parser.add_argument('--input_folder', '-i', type=str, default=r'D:\Dataset\LOD\images\val', help='Path to input images folder')
     parser.add_argument('--model_path', '-m', type=str, default='snapshot/best.pth', help='Path to trained model')
-    parser.add_argument('--output_folder', '-o', type=str, default=r'D:\Dataset\LOD\images\temp', help='Path to output folder')
+    parser.add_argument('--output_folder', '-o', type=str, default=r'D:\Dataset\LOD\images\elephant-37', help='Path to output folder')
 
     args = parser.parse_args()
 

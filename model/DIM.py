@@ -10,11 +10,11 @@ class Encoder(nn.Module):
         self.conv2 = Conv(c1=c_hidden, c2=c_hidden * 2, k=3, s=2)
         self.stage1 = C3k2(c1=c_hidden * 2, c2=c_hidden * 2, c3k=False, e=0.5)
         self.downsample1 = Conv(c1=c_hidden * 2, c2=c_hidden * 4, k=2, s=2, p=0)
-        self.stage2 = C3k2(c1=c_hidden * 4, c2=c_hidden * 4, c3k=False, e=0.5)
+        self.stage2 = C3k2(c1=c_hidden * 2, c2=c_hidden * 2, c3k=False, e=0.5)
         self.downsample2 = Conv(c1=c_hidden * 4, c2=c_hidden * 8, k=2, s=2, p=0)
         self.stage3 = C3k2(c1=c_hidden * 4, c2=c_hidden * 4, c3k=False, e=0.5)
 
-        self.attn1 = A2C2f(c1=c_hidden * 4, c2=c_hidden * 4, residual=True, e=0.5)  # Only used for encoder_3
+        self.attn1 = A2C2f(c1=c_hidden * 4, c2=c_hidden * 4, e=0.5)
 
         self.conv3 = Conv(c1=c_hidden * 8, c2=c_hidden, k=3)
         self.conv4 = Conv(c1=c_hidden, c2=3, k=3)
@@ -27,7 +27,8 @@ class Encoder(nn.Module):
         encoder_1 = self.stage1(self.conv2(self.conv1(x)))  # [B, c_hidden*2, H/2, W/2]
         fusion_1 = self.downsample1(self.intensity_mapping(encoder_1))
 
-        encoder_2 = self.stage2(fusion_1)  # [B, c_hidden*4, H/4, W/4]
+        c_fusion1 = fusion_1.shape[1] // 2  # [B, c_hidden*4, H/4, W/4]
+        encoder_2 = torch.cat([self.stage2(fusion_1[:, :c_fusion1]), fusion_1[:, c_fusion1:]], 1)
         fusion_2 = self.downsample2(self.intensity_mapping(encoder_2))
 
         c = fusion_2.shape[1] // 2  # [B, c_hidden*8, H/8, W/8]

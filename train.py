@@ -1,15 +1,13 @@
 import argparse
 import os
 
+import numpy as np
 import swanlab
 import torch
 import torch.nn as nn
-
-import numpy as np
+from thop import profile
 from torch.utils.data import DataLoader
 from tqdm import tqdm
-
-from thop import profile, clever_format
 
 from dataset import DIMDataset
 from model.DIM import DIM
@@ -32,8 +30,8 @@ def train(args):
 
     # Calculate FLOPs using thop
     # Create a dummy input with shape (1, 3, 256, 256)
-    dummy_input = torch.randn(1, 3, 256, 256).to(device)
-    
+    dummy_input = torch.randn(1, 3, 224, 224).to(device)
+
     # Calculate FLOPs and parameters
     flops, params = profile(net, inputs=(dummy_input,), verbose=False)
 
@@ -44,7 +42,7 @@ def train(args):
         config={
             "learning_rate": 2e-5,
             "epochs": args.n_iter,
-            "loss_weight": {"L1_output": 1, "L1_low": 1, "P": 1e-2, "Edge": 5},
+            "loss_weight": {"L1_output": 1, "L1_low": 1, "P": 5e-1},
             "GPU": torch.cuda.current_device() if torch.cuda.is_available() else "cpu",
             "batch_size": 8,
             "dataset": "LOL-blur-selected",
@@ -55,7 +53,7 @@ def train(args):
     )
 
     # initialize the optimizer
-    optimizer = torch.optim.Adam(net.parameters(), lr=2e-5)
+    optimizer = torch.optim.Adam(net.parameters(), lr=1e-4)
 
     # initialize best model tracking variables
     best_avg_loss = float('inf')
@@ -64,7 +62,7 @@ def train(args):
     # initialize loss functions
     l1_loss = nn.L1Loss()
     p_loss = L_percep().to(device)
-    edge_loss = L_edge().to(device)
+    # edge_loss = L_edge().to(device)
     downSample = nn.AvgPool2d(8)
 
     # run n_iter iterations of training
@@ -80,27 +78,27 @@ def train(args):
 
             # forward pass - DIM returns (output, output_low)
             output, output_low = net(x)
-            
+
             # L1 loss for both output and output_low
             L1_loss_output = l1_loss(output, gt)
             L1_loss_low = l1_loss(output_low, downSample(gt))
-            
+
             # Extract VGG features for L_exp loss
             # L_exp expects (input_feature, target_image) where input_feature is VGG feature
-            P_loss = p_loss(output, gt)
-            
+            P_loss = 5e-1 * p_loss(output, gt)
+
             # Edge/TV loss for smoothness (applied to output)
-            Edge_loss = edge_loss(output)
-            
+            # Edge_loss = 5 * edge_loss(output)
+
             # Total loss: L1 (both outputs) + perceptual + edge
-            loss = L1_loss_output + L1_loss_low + 1e-2 * P_loss + 50 * Edge_loss
-            
+            loss = L1_loss_output + L1_loss_low + P_loss
+
             if it % 8 == 0:
                 run.log({
                     "L1 Loss Output": L1_loss_output.item(),
                     "L1 Loss Low": L1_loss_low.item(),
-                    "Exp Loss": P_loss.item(),
-                    "Edge Loss": Edge_loss.item(),
+                    "P Loss": P_loss.item(),
+                    # "Edge Loss": Edge_loss.item(),
                     "Total Loss": loss.item()
                 })
 
