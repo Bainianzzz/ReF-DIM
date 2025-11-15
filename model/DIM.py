@@ -16,9 +16,6 @@ class Encoder(nn.Module):
 
         self.attn1 = A2C2f(c1=c_hidden * 4, c2=c_hidden * 4, e=0.5)
 
-        self.conv3 = Conv(c1=c_hidden * 8, c2=c_hidden, k=3)
-        self.conv4 = Conv(c1=c_hidden, c2=3, k=3)
-
     @staticmethod
     def intensity_mapping(x):
         return x * 2 - torch.pow(x, 2)
@@ -33,11 +30,8 @@ class Encoder(nn.Module):
 
         c = fusion_2.shape[1] // 2  # [B, c_hidden*8, H/8, W/8]
         encoder_3 = torch.cat([self.stage3(fusion_2[:, :c]), self.attn1(fusion_2[:, c:])], 1)
-        fusion_3 = self.intensity_mapping(encoder_3)
 
-        low_output = self.conv4(self.conv3(fusion_3))
-
-        return low_output, encoder_3, encoder_2, encoder_1
+        return encoder_3, encoder_2, encoder_1
 
 
 class DIM(nn.Module):
@@ -56,7 +50,7 @@ class DIM(nn.Module):
         self.decoder = Conv(c1=c_hidden // 2, c2=3, k=3)
 
     def forward(self, x):
-        low_output, encoder_3, encoder_2, encoder_1 = self.encoder(x)
+        encoder_3, encoder_2, encoder_1 = self.encoder(x)
 
         fusion_1 = self.denoise1(self.upsample1(encoder_3))  # [B, c_hidden*2, H/4, W/4]
 
@@ -67,7 +61,7 @@ class DIM(nn.Module):
         fusion_3 = self.denoise3(self.upsample3(torch.cat([fusion_2, encoder_1[:, :c__], encoder_1[:, c__*2:c__*3]], 1)))  # [B, 3, H, W]
 
         output = self.decoder(fusion_3)
-        return output, low_output
+        return output
 
 
 if __name__ == "__main__":
@@ -75,7 +69,7 @@ if __name__ == "__main__":
 
     input_tensor = torch.randn(1, 3, 800, 1200).to(device)
     model = DIM().to(device)
-    output, output_low = model(input_tensor)
+    output = model(input_tensor)
 
     total_params = sum(p.numel() for p in model.parameters())
-    print(total_params, output.size(), output_low.size())
+    print(total_params, output.size())
