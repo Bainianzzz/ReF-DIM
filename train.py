@@ -11,7 +11,7 @@ from tqdm import tqdm
 
 from dataset import DIMDataset
 from model.DIM import DIM
-from model.MyLoss import L_percep, L_edge
+from model.MyLoss import L_percep
 from utils import count_flops_and_params
 
 
@@ -39,7 +39,7 @@ def train(args):
         config={
             "learning_rate": 2e-5,
             "epochs": args.n_iter,
-            "loss_weight": {"L1_output": 1, "P": 1e-2, "Edge": 5},
+            "loss_weight": {"L1_output": 1, "P": 1e-2},
             "GPU": torch.cuda.current_device() if torch.cuda.is_available() else "cpu",
             "batch_size": 8,
             "dataset": "LOL-blur-selected",
@@ -59,7 +59,6 @@ def train(args):
     # initialize loss functions
     l1_loss = nn.L1Loss()
     p_loss = L_percep().to(device)
-    edge_loss = L_edge().to(device)
 
     # run n_iter iterations of training
     for t in range(args.n_iter):
@@ -82,17 +81,13 @@ def train(args):
             # L_exp expects (input_feature, target_image) where input_feature is VGG feature
             P_loss = p_loss(output, gt)
             
-            # Edge/TV loss for smoothness (applied to output)
-            Edge_loss = edge_loss(output)
-            
-            # Total loss: L1 + perceptual + edge
-            loss = L1_loss_output + 1e-2 * P_loss + 50 * Edge_loss
+            # Total loss: L1 + perceptual
+            loss = L1_loss_output + 1e-2 * P_loss
             
             if it % 8 == 0:
                 run.log({
                     "L1 Loss Output": L1_loss_output.item(),
-                    "Exp Loss": P_loss.item(),
-                    "Edge Loss": Edge_loss.item(),
+                    "P Loss": P_loss.item(),
                     "Total Loss": loss.item()
                 })
 
