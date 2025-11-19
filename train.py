@@ -72,21 +72,23 @@ def train(args):
             gt = batch[1].to(device)
 
             # forward pass
-            output = net(x)
+            output, low_res = net(x)
             
             # L1 loss for output
             L1_loss_output = l1_loss(output, gt)
+            L1_loss_low_res = l1_loss(low_res, gt)
             
             # Extract VGG features for L_exp loss
             # L_exp expects (input_feature, target_image) where input_feature is VGG feature
             P_loss = p_loss(output, gt)
             
-            # Total loss: L1 + perceptual
-            loss = L1_loss_output + 1e-2 * P_loss
+            # Total loss: L1 + perceptual + L1 for low_res
+            loss = L1_loss_output + 1e-2 * P_loss + L1_loss_low_res
             
             if it % 8 == 0:
                 run.log({
                     "L1 Loss Output": L1_loss_output.item(),
+                    "L1 Loss Low Res": L1_loss_low_res.item(),
                     "P Loss": P_loss.item(),
                     "Total Loss": loss.item()
                 })
