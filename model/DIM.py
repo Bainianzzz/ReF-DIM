@@ -13,7 +13,7 @@ class Encoder(nn.Module):
         self.downsample2 = Conv(c1=c_hidden * 2, c2=c_hidden * 4, k=2, s=2, p=0)
 
         self.stage2 = C3k2(c1=c_hidden * 4, c2=c_hidden * 4, c3k=False, e=0.5)
-        self.downsample2 = Conv(c1=c_hidden * 4, c2=c_hidden * 8, k=2, s=2, p=0)
+        self.downsample3 = Conv(c1=c_hidden * 4, c2=c_hidden * 8, k=2, s=2, p=0)
 
         self.stage3 = C3k2(c1=c_hidden * 8, c2=c_hidden * 8, c3k=False, e=1)
         self.attn = A2C2f(c1=c_hidden * 8, c2=c_hidden * 8, e=0.5)
@@ -38,7 +38,7 @@ class Encoder(nn.Module):
         x = self.stage2(x)
         encoder_2 = x
         
-        x = self.downsample2(x)
+        x = self.downsample3(x)
         x = self.intensity_mapping(x)
         x = self.stage3(x)
         x = self.attn(x)
