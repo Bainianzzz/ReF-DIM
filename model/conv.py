@@ -40,8 +40,8 @@ class Conv(nn.Module):
 class UpSampleConv(nn.Module):
     def __init__(self, c1, c2):
         super().__init__()
-        assert c1//4 == c2, "The number of channels of the input and output must be 4:1"
-        self.pointConv = Conv(c1, c1)
+        assert c1//2 == c2, "The number of channels of the input and output must be 4:1"
+        self.pointConv = Conv(c1, c1*2)
         self.upsample = nn.PixelShuffle(2)
 
     def forward(self, x):
