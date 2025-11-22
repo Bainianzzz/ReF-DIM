@@ -27,20 +27,26 @@ class Encoder(nn.Module):
     def forward(self, x):
         x = self.intensity_mapping(x)
         x = self.conv1(x)
+
         x = self.downsample1(x)
-
         x = self.intensity_mapping(x)
-        encoder_1 = self.stage1(x)
-        x = self.downsample2(encoder_1)
+        x = self.stage1(x)
+        encoder_1 = x
 
+        x = self.downsample2(x)
         x = self.intensity_mapping(x)
-        encoder_2 = self.stage2(x)
-        x = self.downsample2(encoder_2)
-
+        x = self.stage2(x)
+        encoder_2 = x
+        
+        x = self.downsample2(x)
         x = self.intensity_mapping(x)
         x = self.stage3(x)
-        encoder_3 = self.attn(x)
-        low_res = self.conv_low(encoder_3)
+        x = self.attn(x)
+        encoder_3 = x
+
+        x = self.conv_low(x)
+        low_res = x
+
         return low_res, encoder_3, encoder_2, encoder_1
 
 
