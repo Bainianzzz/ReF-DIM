@@ -18,7 +18,8 @@ class Encoder(nn.Module):
         self.stage3 = C3k2(c1=c_hidden * 8, c2=c_hidden * 8, c3k=False, e=0.5)
         self.attn = A2C2f(c1=c_hidden * 8, c2=c_hidden * 8, e=0.25)
 
-        self.conv_low = Conv(c1=c_hidden * 8, c2=3, k=3)
+        self.conv2 = Conv(c1=c_hidden * 8, c2=c_hidden, k=3)
+        self.conv3 = Conv(c1=c_hidden, c2=3, k=3)
 
     @staticmethod
     def intensity_mapping(x):
@@ -44,7 +45,8 @@ class Encoder(nn.Module):
         x = self.attn(x)
         encoder_3 = x
 
-        x = self.conv_low(x)
+        x = self.conv2(x)
+        x = self.conv3(x)
         low_res = x
 
         return low_res, encoder_3, encoder_2, encoder_1

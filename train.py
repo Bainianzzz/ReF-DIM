@@ -1,18 +1,16 @@
 import argparse
 import os
 
+import numpy as np
 import swanlab
 import torch
 import torch.nn as nn
-
-import numpy as np
 from torch.utils.data import DataLoader
 from tqdm import tqdm
 
 from dataset import DIMDataset
 from model.DIM import DIM
 from model.MyLoss import L_percep
-from utils import count_flops_and_params
 
 
 def train(args):
@@ -23,41 +21,38 @@ def train(args):
 
     # initialize the data loader
     data = DIMDataset(args.data_path)
-    data_loader = DataLoader(data, batch_size=8, shuffle=True, pin_memory=True)
+    data_loader = DataLoader(data, batch_size=4, shuffle=True, pin_memory=True)
 
     # initialize the model and use CUDA if available
     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
     net = DIM().to(device)
-
-    # Calculate FLOPs and parameters
-    flops, params = count_flops_and_params(net, input_shape=(1, 3, 224, 224), device=device)
 
     # record exp with swanlab
     run = swanlab.init(
         project="DIM",
         # 跟踪超参数与实验元数据
         config={
-            "learning_rate": 2e-5,
+            "learning_rate": 1e-5,
             "epochs": args.n_iter,
             "loss_weight": {"L1_output": 1, "P": 1e-2},
             "GPU": torch.cuda.current_device() if torch.cuda.is_available() else "cpu",
             "batch_size": 8,
             "dataset": "LOL-blur-selected",
             "seed": 123,
-            "flops": flops,
-            "params": params,
         },
     )
 
     # initialize the optimizer
-    optimizer = torch.optim.Adam(net.parameters(), lr=2e-5)
+    optimizer = torch.optim.Adam(net.parameters(), lr=1e-5)
 
     # initialize best model tracking variables
     best_avg_loss = float('inf')
     best_model_path = None
 
     # initialize loss functions
-    l1_loss = nn.L1Loss()
+    pool = nn.AvgPool2d(8, 8).to(device)
+    l1_loss = nn.MSELoss().to(device)
+    low_loss = nn.L1Loss().to(device)
     p_loss = L_percep().to(device)
 
     # run n_iter iterations of training
@@ -72,21 +67,23 @@ def train(args):
             gt = batch[1].to(device)
 
             # forward pass
-            output = net(x)
-            
+            output, output_low = net(x)
+
             # L1 loss for output
-            L1_loss_output = l1_loss(output, gt)
-            
+            L1_loss = l1_loss(output, gt)
+            Low_loss = low_loss(output_low, pool(gt))
+
             # Extract VGG features for L_exp loss
             # L_exp expects (input_feature, target_image) where input_feature is VGG feature
             P_loss = p_loss(output, gt)
-            
+
             # Total loss: L1 + perceptual
-            loss = L1_loss_output + 1e-2 * P_loss
-            
+            loss = L1_loss + 0.25 * Low_loss + 0.75 * P_loss
+
             if it % 8 == 0:
                 run.log({
-                    "L1 Loss Output": L1_loss_output.item(),
+                    "L1 Loss Output": L1_loss.item(),
+                    "Low Loss Output": Low_loss.item(),
                     "P Loss": P_loss.item(),
                     "Total Loss": loss.item()
                 })

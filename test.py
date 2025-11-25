@@ -35,15 +35,9 @@ def lowlight(image_paths, net, result_paths, device):
     # Stack images into a batch
     batch_images = torch.stack(batch_images).to(device)
 
-    # Print memory usage before inference
-    print(f"Before inference: {torch.cuda.memory_allocated() / 1024 ** 3:.2f} GB")
-
     # Perform inference with mixed precision
     with torch.no_grad():
         enhanced_images, _ = net(batch_images)
-
-    # Print memory usage after inference
-    print(f"After inference: {torch.cuda.memory_allocated() / 1024 ** 3:.2f} GB")
 
     # Save enhanced images
     for img, result_path in zip(enhanced_images, result_paths):
@@ -52,18 +46,14 @@ def lowlight(image_paths, net, result_paths, device):
         torchvision.utils.save_image(img, result_path)
 
     # Clean up
-    del batch_images, enhanced_images
     torch.cuda.empty_cache()
-
-    # Print memory usage after cleanup
-    print(f"After cleanup: {torch.cuda.memory_allocated() / 1024 ** 3:.2f} GB")
 
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Test ReF-DIM model on a folder of images')
     parser.add_argument('--input_folder', '-i', type=str, default=r'D:\Dataset\LOD\images\val', help='Path to input images folder')
     parser.add_argument('--model_path', '-m', type=str, default='snapshot/best.pth', help='Path to trained model')
-    parser.add_argument('--output_folder', '-o', type=str, default=r'D:\Dataset\LOD\images\elephant-37', help='Path to output folder')
+    parser.add_argument('--output_folder', '-o', type=str, default=r'D:\Dataset\LOD\images\dragon-50', help='Path to output folder')
 
     args = parser.parse_args()
 
@@ -76,13 +66,7 @@ if __name__ == '__main__':
     net = DIM().to(device)
 
     if torch.cuda.is_available():
-        state_dict = torch.load(args.model_path)
-
-        filtered_state_dict = {}
-        for k, v in state_dict.items():
-            if 'total_ops' not in k and 'total_params' not in k:
-                filtered_state_dict[k] = v
-        net.load_state_dict(filtered_state_dict, strict=False)
+        net.load_state_dict(torch.load(args.model_path))
     else:
         net.load_state_dict(torch.load(args.model_path, map_location='cpu'))
 
