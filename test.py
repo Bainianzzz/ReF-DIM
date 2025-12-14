@@ -2,6 +2,7 @@ import torch
 import torchvision
 import torch.optim
 import os
+import time
 from model.DIM import DIM
 from PIL import Image
 import argparse
@@ -10,14 +11,14 @@ from torchvision.transforms import Compose, ToTensor
 from torch.cuda.amp import autocast
 
 
-def lowlight(image_paths, net, result_paths, device):
+def lowlight(image_path, net, result_path, device):
     """
-    Process a batch of low-light images using the DIM model.
+    Process a single low-light image using the DIM model.
 
     Args:
-        image_paths (list): List of input image paths.
+        image_path (str): Path to input image.
         net (nn.Module): Pre-loaded DIM model.
-        result_paths (list): List of output image paths.
+        result_path (str): Path to output image.
         device (torch.device): Device to run the model on.
     """
     # Define image preprocessing pipeline
@@ -25,38 +26,29 @@ def lowlight(image_paths, net, result_paths, device):
         ToTensor()  # Convert PIL image to C×H×W Tensor and normalize to [0, 1]
     ])
 
-    # Load and preprocess images
-    batch_images = []
-    for image_path in image_paths:
-        data_lowlight = Image.open(image_path)
-        data_lowlight = transform(data_lowlight)  # Apply transform
-        batch_images.append(data_lowlight)
+    # Load and preprocess image
+    data_lowlight = Image.open(image_path)
+    data_lowlight = transform(data_lowlight)  # Apply transform
+    data_lowlight = data_lowlight.unsqueeze(0).to(device)  # Add batch dimension
 
-    # Stack images into a batch
-    batch_images = torch.stack(batch_images).to(device)
-
-    # Print memory usage before inference
-    print(f"Before inference: {torch.cuda.memory_allocated() / 1024 ** 3:.2f} GB")
-
-    # Perform inference with mixed precision
+    # Perform inference
     with torch.no_grad():
-        enhanced_images = net(batch_images)
+        enhanced_images = net(data_lowlight)
 
-    # Print memory usage after inference
-    print(f"After inference: {torch.cuda.memory_allocated() / 1024 ** 3:.2f} GB")
+    # If model returns a list of outputs, take the last (most enhanced) one
+    if isinstance(enhanced_images, (list, tuple)):
+        enhanced_img = enhanced_images[-1].squeeze(0)
+    else:
+        enhanced_img = enhanced_images.squeeze(0)
 
-    # Save enhanced images
-    for img, result_path in zip(enhanced_images, result_paths):
-        if not os.path.exists(os.path.dirname(result_path)):
-            os.makedirs(os.path.dirname(result_path))
-        torchvision.utils.save_image(img, result_path)
+    # Save enhanced image
+    # Make sure output directory exists
+    if not os.path.exists(os.path.dirname(result_path)):
+        os.makedirs(os.path.dirname(result_path))
+    torchvision.utils.save_image(enhanced_img, result_path)
 
     # Clean up
-    del batch_images, enhanced_images
     torch.cuda.empty_cache()
-
-    # Print memory usage after cleanup
-    print(f"After cleanup: {torch.cuda.memory_allocated() / 1024 ** 3:.2f} GB")
 
 
 if __name__ == '__main__':
@@ -84,15 +76,11 @@ if __name__ == '__main__':
         os.path.join(args.input_folder, f) for f in os.listdir(args.input_folder)
     ]
 
-    # Process images in batches
-    for i in range(0, len(image_files)):
-        batch_files = image_files[i:i + 1]
-        batch_result_paths = [
-            os.path.join(args.output_folder, f"{os.path.splitext(os.path.basename(path))[0]}.png")
-            for path in batch_files
-        ]
-
-        lowlight(batch_files, net, batch_result_paths, device)
-
-        for path in batch_result_paths:
-            print(f"Saved enhanced image to {path}")
+    # process images one by one
+    for image_path in image_files:
+        result_path = os.path.join(args.output_folder, f"{os.path.splitext(os.path.basename(image_path))[0]}.png")
+        start_time = time.time()
+        lowlight([image_path], net, [result_path], device)
+        end_time = time.time()
+        elapsed_time = end_time - start_time
+        print(f"Saved enhanced image to {result_path}. Processing time: {elapsed_time:.4f} seconds")

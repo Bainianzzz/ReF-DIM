@@ -203,3 +203,4 @@ swanlog/
 # Numpy files
 *.npy
 *.npz
+/.idea

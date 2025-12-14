@@ -11,7 +11,7 @@ class LossFunction(nn.Module):
     def forward(self, input, target):
         Fidelity_Loss = self.l2_loss(input, target)
         Percep_Loss = self.percep_loss(input, target)
-        return Fidelity_Loss + 0.2*Percep_Loss
+        return Fidelity_Loss , Percep_Loss
 
 # Perceptual feature loss
 class PercepLoss(nn.Module):

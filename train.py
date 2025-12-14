@@ -13,7 +13,6 @@ from thop import profile, clever_format
 
 from dataset import DIMDataset
 from model.DIM import DIM
-from model.MyLoss import L_percep, L_edge
 
 
 def train(args):
@@ -32,88 +31,64 @@ def train(args):
 
     # Calculate FLOPs using thop
     # Create a dummy input with shape (1, 3, 256, 256)
-    dummy_input = torch.randn(1, 3, 256, 256).to(device)
+    dummy_input = torch.randn(1, 3, 224, 224).to(device)
     
     # Calculate FLOPs and parameters
     flops, params = profile(net, inputs=(dummy_input,), verbose=False)
 
     # record exp with swanlab
     run = swanlab.init(
-        project="DIM",
+        project="DIM-SCI",
         # 跟踪超参数与实验元数据
         config={
-            "learning_rate": 2e-5,
+            "learning_rate": 1e-5,
             "epochs": args.n_iter,
-            "loss_weight": {"L1_output": 1, "L1_low": 1, "EXP": 0.2, "Edge": 0.1},
+            "loss_weight": {"L2": 1, "Percep": 0.2},
             "GPU": torch.cuda.current_device() if torch.cuda.is_available() else "cpu",
             "batch_size": 8,
             "dataset": "LOL-blur-selected",
             "seed": 123,
-            "flops": flops,
-            "params": params,
+            "flops": int(flops),
+            "params": int(params),
         },
     )
 
     # initialize the optimizer
-    optimizer = torch.optim.Adam(net.parameters(), lr=2e-5)
+    optimizer = torch.optim.Adam(net.parameters(), lr=1e-5)
 
     # initialize best model tracking variables
     best_avg_loss = float('inf')
     best_model_path = None
 
-    # initialize loss functions
-    l1_loss = nn.L1Loss()
-    exp_loss = L_percep().to(device)
-    edge_loss = L_edge().to(device)
-
     # run n_iter iterations of training
     for t in range(args.n_iter):
+        net.train()
         # Track losses for this epoch
-        epoch_losses = []
+        losses = []
+        L2_Losses = []
+        Percep_Losses = []
 
         # get a single batch
-        for (it, batch) in tqdm(enumerate(data_loader), desc=f'epoch-{t + 1}', total=len(data_loader)):
-            # get the X and the targets values
+        for (_, batch) in tqdm(enumerate(data_loader), desc=f'epoch-{t + 1}', total=len(data_loader)):
+            # get the input and the target values
             x = batch[0].to(device)
             gt = batch[1].to(device)
-
-            # forward pass - DIM returns (output, output_low)
-            output, output_low = net(x)
-            
-            # L1 loss for both output and output_low
-            L1_loss_output = l1_loss(output, gt)
-            L1_loss_low = l1_loss(output_low, gt)
-            
-            # Extract VGG features for L_exp loss
-            # L_exp expects (input_feature, target_image) where input_feature is VGG feature
-            output_features = exp_loss.vgg_layers(output)
-            P_loss = exp_loss(output_features, gt)
-            
-            # Edge/TV loss for smoothness (applied to output)
-            Edge_loss = edge_loss(output)
-            
-            # Total loss: L1 (both outputs) + perceptual + edge
-            loss = L1_loss_output + L1_loss_low + 1e-2 * P_loss + 50 * Edge_loss
-            
-            if it % 8 == 0:
-                run.log({
-                    "L1 Loss Output": L1_loss_output.item(),
-                    "L1 Loss Low": L1_loss_low.item(),
-                    "Exp Loss": P_loss.item(),
-                    "Edge Loss": Edge_loss.item(),
-                    "Total Loss": loss.item()
-                })
-
             optimizer.zero_grad()
+            
+            # Total loss: L2 + Percep
+            loss, L2_Loss, Percep_Loss = net._loss(x, gt)
             loss.backward()
+            nn.utils.clip_grad_norm_(net.parameters(), 5) 
             optimizer.step()
 
             # Record loss
-            epoch_losses.append(loss.item())
+            losses.append(loss.item())
+            L2_Losses.append(L2_Loss.item())
+            Percep_Losses.append(Percep_Loss.item())
 
         # Calculate average loss for this epoch
-        avg_loss = np.mean(epoch_losses)
-        run.log({"Average Loss": avg_loss})
+        avg_loss = np.mean(losses)
+        run.log({"Loss": avg_loss, "L2_Loss": np.mean(L2_Losses), "Percep_Loss": np.mean(Percep_Losses)})
 
         # Save model with best (lowest) average loss
         if avg_loss < best_avg_loss:
@@ -123,10 +98,12 @@ def train(args):
             torch.save(net.state_dict(), best_model_path)
             print(f'Best model saved at epoch {t + 1} with avg loss: {best_avg_loss}')
 
-    # print final best model info
-    if best_model_path:
-        print(f'Best model saved at {best_model_path} with avg loss: {best_avg_loss}')
-    run.finish()
+        # save each 5 epochs
+        if (t + 1) % 5 == 0:
+            model_path = os.path.join(args.result_path, f'epoch_{t + 1}.pth')
+            os.makedirs(args.result_path, exist_ok=True)
+            torch.save(net.state_dict(), model_path)
+            print(f'Model saved at epoch {t + 1}')
 
 
 if __name__ == '__main__':

@@ -10,7 +10,7 @@ import torchvision.transforms as transforms
 
 transform = transforms.Compose([
     transforms.ToTensor(),
-    transforms.Resize((256, 256)),
+    transforms.Resize((512, 512)),
 ])
 
 
