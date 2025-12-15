@@ -1,6 +1,5 @@
 import torch
 import torch.nn as nn
-from model.NAFNet import NAFBlock
 from model.conv import *
 from model.loss import LossFunction
 
@@ -10,7 +9,7 @@ class SimpleGate(nn.Module):
         return x1 * x2
 
 class EncoderBlock(nn.Module):
-    def __init__(self, c1=3, c_hidden=32):
+    def __init__(self, c1=3, c_hidden=16):
         super().__init__()
         self.conv_in = Conv(c1=c1, c2=c_hidden, k=3)
         self.conv_out = Conv(c1=c_hidden // 2, c2=3, k=3)
@@ -37,7 +36,7 @@ class EncoderBlock(nn.Module):
 
 
 class DIM(nn.Module):
-    def __init__(self, c1=3, c_hidden=32, range=6, weights=[1, 0.2]):
+    def __init__(self, c1=3, c_hidden=16, range=6, weights=[1, 0.2]):
         super().__init__()
         self.range = range
         self.weights = weights
@@ -65,6 +64,29 @@ class DIM(nn.Module):
             L2_Loss += loss[0] * self.weights[0]
             Percep_Loss += loss[1] * self.weights[1]
         return total_loss, L2_Loss, Percep_Loss
+
+
+class DIMInference(nn.Module):
+    """
+    DIM model version for validation/inference, without the loss function.
+    Can load weights from a DIM training model checkpoint (will automatically skip loss_fn keys).
+    """
+    def __init__(self, c1=3, c_hidden=16, range=6):
+        super().__init__()
+        self.range = range
+        self.enhance = EncoderBlock(c1=c1, c_hidden=c_hidden)
+
+    def forward(self, x):
+        outputs = []
+        for i in range(self.range):
+            x = self.enhance(x)
+            outputs.append(x)
+        return outputs
+    
+    def load_from_dim(self, dim_state_dict, strict=False):
+        inference_state_dict = {k: v for k, v in dim_state_dict.items() 
+                               if not k.startswith('loss_fn.')}
+        return self.load_state_dict(inference_state_dict, strict=strict)
 
 
 if __name__ == "__main__":

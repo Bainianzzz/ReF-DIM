@@ -3,7 +3,7 @@ import torchvision
 import torch.optim
 import os
 import time
-from model.DIM import DIM
+from model.DIM import DIMInference
 from PIL import Image
 import argparse
 import glob
@@ -65,11 +65,20 @@ if __name__ == '__main__':
 
     # Initialize device and model
     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
-    net = DIM().to(device)
+    net = DIMInference().to(device)
+    net.eval()
+    
+    # Load model weights (automatically filters out loss_fn related weights)
     if torch.cuda.is_available():
-        net.load_state_dict(torch.load(args.model_path))
+        checkpoint = torch.load(args.model_path)
     else:
-        net.load_state_dict(torch.load(args.model_path, map_location='cpu'))
+        checkpoint = torch.load(args.model_path, map_location='cpu')
+    
+    if isinstance(checkpoint, dict) and 'state_dict' in checkpoint:
+        state_dict = checkpoint['state_dict']
+    else:
+        state_dict = checkpoint
+    net.load_from_dim(state_dict, strict=False)
 
     # Get all image files
     image_extensions = ['.jpg', '.jpeg', '.png', '.bmp', '.tiff', '.tif']

@@ -206,3 +206,4 @@ swanlog/
 /.idea
 .idea/misc.xml
 .idea/ReF-DIM.iml
+*.xml
