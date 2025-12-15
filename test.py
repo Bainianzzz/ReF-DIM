@@ -72,15 +72,18 @@ if __name__ == '__main__':
         net.load_state_dict(torch.load(args.model_path, map_location='cpu'))
 
     # Get all image files
+    image_extensions = ['.jpg', '.jpeg', '.png', '.bmp', '.tiff', '.tif']
     image_files = [
         os.path.join(args.input_folder, f) for f in os.listdir(args.input_folder)
+        if os.path.isfile(os.path.join(args.input_folder, f)) and 
+           os.path.splitext(f)[1].lower() in image_extensions
     ]
 
     # process images one by one
     for image_path in image_files:
         result_path = os.path.join(args.output_folder, f"{os.path.splitext(os.path.basename(image_path))[0]}.png")
         start_time = time.time()
-        lowlight([image_path], net, [result_path], device)
+        lowlight(image_path, net, result_path, device)  # 移除列表包装
         end_time = time.time()
         elapsed_time = end_time - start_time
         print(f"Saved enhanced image to {result_path}. Processing time: {elapsed_time:.4f} seconds")
