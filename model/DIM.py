@@ -12,13 +12,12 @@ class EncoderBlock(nn.Module):
     def __init__(self, c1=3, c_hidden=16):
         super().__init__()
         self.conv_in = Conv(c1=c1, c2=c_hidden, k=3)
-        self.conv_out = Conv(c1=c_hidden // 2, c2=3, k=3)
+        self.conv_out = Conv(c1=c_hidden, c2=3, k=3)
 
         self.stage = C3k2(c1=c_hidden, c2=c_hidden, c3k=False, e=0.5)
-        self.sg = SimpleGate()
         self.sca = nn.Sequential(
             nn.AdaptiveAvgPool2d(1),
-            nn.Conv2d(in_channels=c_hidden // 2, out_channels=c_hidden // 2, kernel_size=1),
+            nn.Conv2d(in_channels=c_hidden, out_channels=c_hidden, kernel_size=1),
         )
 
     @staticmethod
@@ -29,7 +28,6 @@ class EncoderBlock(nn.Module):
         x = self.conv_in(x)
         x = self.stage(x)
         x = self.intensity_mapping(x)
-        x = self.sg(x)
         x = x * self.sca(x)
         x = self.conv_out(x)
         return x
@@ -60,6 +58,7 @@ class DIM(nn.Module):
         for i in range(self.range):
             stage_target = input + (target - input)*i / self.range
             loss = self.loss_fn(outputs[i], stage_target)
+            # loss: (L2, Percep)
             total_loss += loss[0] * self.weights[0] + loss[1] * self.weights[1]
             L2_Loss += loss[0] * self.weights[0]
             Percep_Loss += loss[1] * self.weights[1]

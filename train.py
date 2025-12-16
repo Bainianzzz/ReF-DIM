@@ -20,7 +20,8 @@ def train(args):
     config = {
         "learning_rate": 1e-5,
         "epochs": args.n_iter,
-        "loss_weight": {"L2": 1, "Percep": 0.1},
+        # 损失权重：L2 + Percep
+        "loss_weight": {"L2": 1, "Percep": 0.3},
         "GPU": torch.cuda.current_device() if torch.cuda.is_available() else "cpu",
         "batch_size": 8,
         "dataset": "LOL-blur-selected",
@@ -29,7 +30,7 @@ def train(args):
         "pin_memory": True,
         "save_interval": 5,  # 每N个epoch保存一次模型
         "grad_clip": 5,  # 梯度裁剪阈值
-        "image_size": (512, 512),  # 训练时图片裁剪的大小 (height, width)
+        "image_size": (256, 256),  # 训练时图片裁剪的大小 (height, width)
         "range": 6,  # DIM模型的range参数，控制增强阶段数
         "c_hidden": 16,  # DIM模型的c_hidden参数，控制隐藏层通道数
     }
