@@ -35,7 +35,7 @@ class EncoderBlock(nn.Module):
 
 
 class DIM(nn.Module):
-    def __init__(self, c1=3, c_hidden=16, range=6, weights=[1, 0.2]):
+    def __init__(self, c1=3, c_hidden=16, range=6, weights=[1.0, 0.3, 0.5]):
         super().__init__()
         self.range = range
         self.weights = weights
@@ -56,14 +56,20 @@ class DIM(nn.Module):
         total_loss = 0
         L2_Loss = 0
         Percep_Loss = 0
+        Smooth_Loss = 0
         for i in range(self.range):
             stage_target = input + (target - input)*i / self.range
             loss = self.loss_fn(outputs[i], stage_target)
-            # loss: (L2, Percep)
-            total_loss += loss[0] * self.weights[0] + loss[1] * self.weights[1]
+            # loss: (L2, Percep, Smooth)
+            total_loss += (
+                loss[0] * self.weights[0]
+                + loss[1] * self.weights[1]
+                + loss[2] * self.weights[2]
+            )
             L2_Loss += loss[0] * self.weights[0]
             Percep_Loss += loss[1] * self.weights[1]
-        return total_loss, L2_Loss, Percep_Loss
+            Smooth_Loss += loss[2] * self.weights[2]
+        return total_loss, L2_Loss, Percep_Loss, Smooth_Loss
 
 
 class DIMInference(nn.Module):

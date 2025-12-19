@@ -20,8 +20,8 @@ def train(args):
     config = {
         "learning_rate": 1e-5,
         "epochs": args.n_iter,
-        # 损失权重：L2 + Percep
-        "loss_weight": {"L2": 1, "Percep": 0.5},
+        # loss weights: [L2, Percep, Smooth]
+        "loss_weight": {"L2": 1.0, "Percep": 0.3, "Smooth": 0.5},
         "GPU": torch.cuda.current_device() if torch.cuda.is_available() else "cpu",
         "batch_size": 8,
         "dataset": "LOL-blur-selected",
@@ -51,8 +51,12 @@ def train(args):
 
     # initialize the model and use CUDA if available
     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
-    # 从config中提取loss_weight并转换为列表格式 [L2_weight, Percep_weight]
-    loss_weights = [config["loss_weight"]["L2"], config["loss_weight"]["Percep"]]
+    # 从config中提取loss_weight并转换为列表格式 [L2_weight, Percep_weight, Smooth_weight]
+    loss_weights = [
+        config["loss_weight"]["L2"],
+        config["loss_weight"]["Percep"],
+        config["loss_weight"]["Smooth"],
+    ]
     net = DIM(
         c_hidden=config["c_hidden"],
         range=config["range"],
@@ -79,6 +83,7 @@ def train(args):
         losses = []
         L2_Losses = []
         Percep_Losses = []
+        Smooth_Losses = []
 
         # get a single batch
         for (_, batch) in tqdm(enumerate(data_loader), desc=f'epoch-{t + 1}', total=len(data_loader)):
@@ -87,8 +92,8 @@ def train(args):
             gt = batch[1].to(device)
             optimizer.zero_grad()
             
-            # Total loss: L2 + Percep
-            loss, L2_Loss, Percep_Loss = net._loss(x, gt)
+            # Total loss: L2 + Percep + Smooth
+            loss, L2_Loss, Percep_Loss, Smooth_Loss = net._loss(x, gt)
             loss.backward()
             nn.utils.clip_grad_norm_(net.parameters(), config["grad_clip"]) 
             optimizer.step()
@@ -97,10 +102,16 @@ def train(args):
             losses.append(loss.item())
             L2_Losses.append(L2_Loss.item())
             Percep_Losses.append(Percep_Loss.item())
+            Smooth_Losses.append(Smooth_Loss.item())
 
         # Calculate average loss for this epoch
         avg_loss = np.mean(losses)
-        run.log({"Loss": avg_loss, "L2_Loss": np.mean(L2_Losses), "Percep_Loss": np.mean(Percep_Losses)})
+        run.log({
+            "Loss": avg_loss,
+            "L2_Loss": np.mean(L2_Losses),
+            "Percep_Loss": np.mean(Percep_Losses),
+            "Smooth_Loss": np.mean(Smooth_Losses),
+        })
 
         # Save model with best (lowest) average loss
         if avg_loss < best_avg_loss:
