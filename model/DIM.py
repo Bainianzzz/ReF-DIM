@@ -25,11 +25,12 @@ class EncoderBlock(nn.Module):
         return x * 2 - torch.pow(x, 2)
 
     def forward(self, x):
-        x = self.conv_in(x)
-        x = self.stage(x)
         x = self.intensity_mapping(x)
-        x = x * self.sca(x)
-        x = self.conv_out(x)
+        fea = self.conv_in(x)
+        fea = self.stage(fea)
+        fea = fea * self.sca(fea)
+        fea = self.conv_out(fea)
+        x = fea + x
         return x
 
 
