@@ -21,7 +21,7 @@ def train(args):
         "learning_rate": 1e-5,
         "epochs": args.n_iter,
         # loss weights: [L2, Percep, Smooth]
-        "loss_weight": {"L2": 1.0, "Percep": 0.3, "Smooth": 0.5},
+        "loss_weight": {"L2": 0.8, "Percep": 0.3, "Smooth": 0.1},
         "GPU": torch.cuda.current_device() if torch.cuda.is_available() else "cpu",
         "batch_size": 8,
         "dataset": "LOL-blur-selected",

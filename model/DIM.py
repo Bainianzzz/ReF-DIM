@@ -14,7 +14,7 @@ class EncoderBlock(nn.Module):
         self.conv_in = Conv(c1=c1, c2=c_hidden, k=3)
         self.conv_out = Conv(c1=c_hidden, c2=3, k=3)
 
-        self.stage = C3k2(c1=c_hidden, c2=c_hidden, c3k=False, e=0.5)
+        self.stage = C3k2(c1=c_hidden, c2=c_hidden, c3k=False, e=0.5, n=2)
         self.sca = nn.Sequential(
             nn.AdaptiveAvgPool2d(1),
             nn.Conv2d(in_channels=c_hidden, out_channels=c_hidden, kernel_size=1),
@@ -25,8 +25,8 @@ class EncoderBlock(nn.Module):
         return x * 2 - torch.pow(x, 2)
 
     def forward(self, x):
-        x = self.intensity_mapping(x)
-        fea = self.conv_in(x)
+        fea = self.intensity_mapping(x)
+        fea = self.conv_in(fea)
         fea = self.stage(fea)
         fea = fea * self.sca(fea)
         fea = self.conv_out(fea)
