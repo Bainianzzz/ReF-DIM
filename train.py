@@ -118,14 +118,20 @@ def train(args):
             best_avg_loss = avg_loss
             best_model_path = os.path.join(args.result_path, 'best.pth')
             os.makedirs(args.result_path, exist_ok=True)
-            torch.save(net.state_dict(), best_model_path)
+            # only save model parameters, exclude loss_fn (contains LPIPS's VGG model)
+            model_state = {k: v for k, v in net.state_dict().items() 
+                          if not k.startswith('loss_fn.')}
+            torch.save(model_state, best_model_path)
             print(f'Best model saved at epoch {t + 1} with avg loss: {best_avg_loss}')
 
         # save model at specified interval
         if (t + 1) % config["save_interval"] == 0:
             model_path = os.path.join(args.result_path, f'epoch_{t + 1}.pth')
             os.makedirs(args.result_path, exist_ok=True)
-            torch.save(net.state_dict(), model_path)
+            # only save model parameters, exclude loss_fn (contains LPIPS's VGG model)
+            model_state = {k: v for k, v in net.state_dict().items() 
+                          if not k.startswith('loss_fn.')}
+            torch.save(model_state, model_path)
             print(f'Model saved at epoch {t + 1}')
 
 

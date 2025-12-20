@@ -75,7 +75,8 @@ class DIM(nn.Module):
 class DIMInference(nn.Module):
     """
     DIM model version for validation/inference, without the loss function.
-    Can load weights from a DIM training model checkpoint (will automatically skip loss_fn keys).
+    Can load weights from a DIM training model checkpoint.
+    Automatically handles both new format (without loss_fn) and old format (with loss_fn).
     """
     def __init__(self, c1=3, c_hidden=16, range=6):
         super().__init__()
@@ -90,8 +91,27 @@ class DIMInference(nn.Module):
         return outputs
     
     def load_from_dim(self, dim_state_dict, strict=False):
-        inference_state_dict = {k: v for k, v in dim_state_dict.items() 
-                               if not k.startswith('loss_fn.')}
+        """
+        Load weights from DIM checkpoint.
+        
+        Args:
+            dim_state_dict: State dict from DIM checkpoint (new format without loss_fn, or old format with loss_fn)
+            strict: Whether to strictly enforce that the keys in state_dict match the model
+            
+        Returns:
+            Missing keys and unexpected keys from load_state_dict
+        """
+        # Check if there are any loss_fn keys (old format)
+        has_loss_fn = any(k.startswith('loss_fn.') for k in dim_state_dict.keys())
+        
+        if has_loss_fn:
+            # Old format: filter out loss_fn keys
+            inference_state_dict = {k: v for k, v in dim_state_dict.items() 
+                                   if not k.startswith('loss_fn.')}
+        else:
+            # New format: directly use the state dict (already filtered during save)
+            inference_state_dict = dim_state_dict
+        
         return self.load_state_dict(inference_state_dict, strict=strict)
 
 
